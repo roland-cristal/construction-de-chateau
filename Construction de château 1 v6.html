@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Éditeur PNG Fiesta</title>
+
+<style>
+body{
+    margin:0;
+    overflow:hidden;
+    font-family:Tahoma;
+    cursor:none;
+}
+
+/* Désactive totalement le menu clic droit */
+body{
+    -webkit-user-select:none;
+    user-select:none;
+}
+
+/* Curseur */
+#customCursor{
+    position:fixed;
+    width:32px;
+    height:32px;
+    pointer-events:none;
+    z-index:9999;
+    background:url("Curseur 1.png") no-repeat center/contain;
+}
+
+/* Boutons images */
+.controlBtn{
+    position:fixed;
+    left:10px;
+    z-index:1000;
+    background:none;
+    border:none;
+    padding:0;
+}
+
+.controlBtn img{
+    height:28px;
+    display:block;
+}
+
+#resetBtn{top:10px;}
+#bgBtn{top:45px;}
+#fiestaBtn{top:120px;}
+
+/* BPM */
+#bpmInput{
+    position:fixed;
+    top:85px;
+    left:10px;
+    width:70px;
+    font-size:18px;
+    background:#FFFFA6;
+    font-family:"Old English Text MT","Old English",serif;
+    text-align:center;
+    z-index:1000;
+}
+
+/* Layout */
+#main{
+    display:flex;
+    height:100vh;
+    width:100vw;
+}
+
+#canvasZone{
+    flex:1;
+    position:relative;
+}
+
+/* Fonds */
+.bgLayer{
+    position:absolute;
+    width:100%;
+    height:100%;
+    top:0;
+    left:0;
+    background-size:100% 100%;
+    background-position:center;
+    transition:opacity 2s linear;
+}
+
+#bg1{z-index:0;opacity:1;}
+#bg2{z-index:0;opacity:0;}
+
+canvas{
+    position:absolute;
+    left:0;
+    top:0;
+    z-index:1;
+}
+
+/* Toolbar corrigée (plus d’espace gris) */
+#toolbar{
+    width:120px; /* ajusté */
+    background:#C0C0C0;
+    display:grid;
+    grid-template-columns:repeat(2,55px);
+    justify-content:center;
+    gap:5px;
+    padding:5px 0;
+    border-left:2px solid #808080;
+    box-sizing:border-box;
+    z-index:10;
+}
+
+.btn{
+    width:55px;
+    height:55px;
+    background:#C0C0C0;
+    border-top:2px solid #FFF;
+    border-left:2px solid #FFF;
+    border-right:2px solid #404040;
+    border-bottom:2px solid #404040;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.btn:active{
+    border-top:2px solid #404040;
+    border-left:2px solid #404040;
+    border-right:2px solid #FFF;
+    border-bottom:2px solid #FFF;
+}
+
+.btn img{
+    max-width:45px;
+    max-height:45px;
+    pointer-events:none;
+}
+</style>
+</head>
+
+<body>
+
+<div id="customCursor"></div>
+
+<button id="resetBtn" class="controlBtn">
+    <img src="Remettre à zéro 1.png">
+</button>
+
+<button id="bgBtn" class="controlBtn">
+    <img src="Changer de fond 1.png">
+</button>
+
+<input id="bpmInput" type="number" min="1" max="999" placeholder="BPM">
+
+<button id="fiestaBtn" class="controlBtn">
+    <img src="Fiesta 1.png">
+</button>
+
+<div id="main">
+    <div id="canvasZone">
+        <div id="bg1" class="bgLayer"></div>
+        <div id="bg2" class="bgLayer"></div>
+        <canvas id="objLayer" width="4000" height="4000"></canvas>
+    </div>
+    <div id="toolbar"></div>
+</div>
+
+<script>
+/* Supprime totalement menu clic droit */
+document.addEventListener("contextmenu", e => e.preventDefault());
+
+/* ===== CURSEUR ===== */
+const cursor=document.getElementById("customCursor");
+document.addEventListener("mousemove",e=>{
+    cursor.style.left=(e.clientX-8)+"px";
+    cursor.style.top=(e.clientY-8)+"px";
+});
+
+/* ===== DONNÉES ===== */
+const fonds=[
+"Fond 1","Fond 2","Fond 3","Fond 4",
+"Fond 5","Fond 6","Fond 7","Fond 8","Fond 9","Fond 10"
+];
+
+const pngList=[
+"Tour 1","Tour 2","Tour 3",
+"Fenêtre 1","Fenêtre 2","Fenêtre 3",
+"Maisonnée 1","Meurtrière 1",
+"Pont 1","Pont droite 1","Pont gauche 1",
+"Porte 1",
+"Sommet 1","Sommet 2","Sommet 3","Sommet 4",
+"Tourelle 1","Tourelle 2","Tourelle 3",
+"Mur 1"
+];
+
+const canvas=document.getElementById("objLayer");
+const ctx=canvas.getContext("2d");
+
+let objects=[];
+let tool=null;
+let dragObj=null;
+let offsetX=0,offsetY=0;
+let keys={};
+let hoveredObj=null;
+
+let fiestaActive=false;
+let fiestaStart=0;
+let bpm=120;
+const JUMP=113;
+
+let angleMolette=1;
+
+/* ===== FOND ===== */
+const bg1=document.getElementById("bg1");
+const bg2=document.getElementById("bg2");
+let activeBg=bg1;
+
+function randomFond(){
+    return fonds[Math.floor(Math.random()*fonds.length)];
+}
+activeBg.style.backgroundImage=`url("${randomFond()}.png")`;
+
+document.getElementById("bgBtn").onclick=()=>{
+    const next=(activeBg===bg1)?bg2:bg1;
+    next.style.backgroundImage=`url("${randomFond()}.png")`;
+    next.style.opacity=1;
+    activeBg.style.opacity=0;
+    activeBg=next;
+};
+
+/* ===== REDRAW ===== */
+function redraw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    const now=performance.now();
+
+    objects.forEach(o=>{
+        let w=o.w;
+        let h=o.h;
+        let yOffset=0;
+
+        if(fiestaActive){
+            const beat=60000/bpm;
+            const t=(now-fiestaStart)%beat;
+
+            const deformIn=0.1*beat;
+            const deformOut=0.1*beat;
+            const jumpUp=0.4*beat;
+            const jumpDown=0.4*beat;
+
+            if(t<deformIn){
+                let p=t/deformIn;
+                w=o.w*(1+0.10*p);
+                h=o.h*(1-0.15*p);
+            }
+            else if(t<deformIn+deformOut){
+                let p=(t-deformIn)/deformOut;
+                w=o.w*(1.10-0.10*p);
+                h=o.h*(0.85+0.15*p);
+            }
+            else if(t<deformIn+deformOut+jumpUp){
+                let p=(t-deformIn-deformOut)/jumpUp;
+                yOffset=-JUMP*p;
+            }
+            else{
+                let p=(t-deformIn-deformOut-jumpUp)/jumpDown;
+                yOffset=-JUMP*(1-p);
+            }
+        }
+
+        ctx.drawImage(o.img,o.cx-w/2,o.cy-h/2+yOffset,w,h);
+    });
+
+    requestAnimationFrame(redraw);
+}
+
+/* ===== INTERACTION ===== */
+function getObject(x,y){
+    for(let i=objects.length-1;i>=0;i--){
+        let o=objects[i];
+        if(x>o.cx-o.w/2 && x<o.cx+o.w/2 &&
+           y>o.cy-o.h/2 && y<o.cy+o.h/2)
+           return o;
+    }
+    return null;
+}
+
+canvas.addEventListener("mousemove",e=>{
+    const rect=canvas.getBoundingClientRect();
+    hoveredObj=getObject(e.clientX-rect.left,e.clientY-rect.top);
+
+    if(e.buttons===1 && dragObj){
+        dragObj.cx=e.clientX-rect.left-offsetX;
+        dragObj.cy=e.clientY-rect.top-offsetY;
+    }
+});
+
+canvas.addEventListener("mousedown",e=>{
+    const rect=canvas.getBoundingClientRect();
+    const x=e.clientX-rect.left;
+    const y=e.clientY-rect.top;
+
+    if(e.button===2){
+        const obj=getObject(x,y);
+        if(obj) objects.splice(objects.indexOf(obj),1);
+        return;
+    }
+
+    const existing=getObject(x,y);
+    if(existing){
+        dragObj=existing;
+        offsetX=x-existing.cx;
+        offsetY=y-existing.cy;
+        return;
+    }
+
+    if(tool){
+        const img=new Image();
+        img.src=tool+".png";
+        img.onload=()=>{
+            objects.push({
+                img:img,
+                w:img.width*angleMolette,
+                h:img.height*angleMolette,
+                cx:x,
+                cy:y
+            });
+        };
+    }
+});
+
+canvas.addEventListener("mouseup",()=>dragObj=null);
+
+canvas.addEventListener("wheel",e=>{
+    if(!hoveredObj) return;
+    e.preventDefault();
+
+    const scale=e.deltaY<0?1.05:0.95;
+
+    if(keys["h"]){
+        hoveredObj.w*=scale;
+    }
+    else if(keys["v"]){
+        hoveredObj.h*=scale;
+    }
+    else{
+        hoveredObj.w*=scale;
+        hoveredObj.h*=scale;
+        angleMolette*=scale;
+    }
+});
+
+document.addEventListener("keydown",e=>{
+    keys[e.key.toLowerCase()]=true;
+
+    if(e.key==="+" && hoveredObj){
+        objects.splice(objects.indexOf(hoveredObj),1);
+        objects.push(hoveredObj);
+    }
+
+    if(e.key==="-" && hoveredObj){
+        objects.splice(objects.indexOf(hoveredObj),1);
+        objects.unshift(hoveredObj);
+    }
+});
+
+document.addEventListener("keyup",e=>{
+    keys[e.key.toLowerCase()]=false;
+});
+
+/* RESET */
+document.getElementById("resetBtn").onclick=()=>{
+    objects=[];
+    fiestaActive=false;
+    angleMolette=1;
+};
+
+/* FIESTA */
+document.getElementById("fiestaBtn").onclick=()=>{
+    const val=parseInt(document.getElementById("bpmInput").value);
+    if(val>0) bpm=val;
+    fiestaActive=true;
+    fiestaStart=performance.now();
+};
+
+/* Toolbar */
+function createBtn(name){
+    const b=document.createElement("div");
+    b.className="btn";
+    const img=document.createElement("img");
+    img.src=name+".png";
+    b.appendChild(img);
+    b.onclick=()=>tool=name;
+    document.getElementById("toolbar").appendChild(b);
+}
+
+pngList.forEach(createBtn);
+
+redraw();
+</script>
+</body>
+</html>
