@@ -25,7 +25,7 @@ body{
     height:32px;
     pointer-events:none;
     z-index:9999;
-    background:url("Curseur 1.png") no-repeat center/contain;
+    background:url("images/Curseur 1.png") no-repeat center/contain;
 }
 
 /* Boutons images */
@@ -141,17 +141,17 @@ canvas{
 <div id="customCursor"></div>
 
 <button id="resetBtn" class="controlBtn">
-    <img src="Remettre à zéro 1.png">
+    <img src="images/Remettre à zero 1.png">
 </button>
 
 <button id="bgBtn" class="controlBtn">
-    <img src="Changer de fond 1.png">
+    <img src="images/Changer de fond 1.png">
 </button>
 
 <input id="bpmInput" type="number" min="1" max="999" placeholder="BPM">
 
 <button id="fiestaBtn" class="controlBtn">
-    <img src="Fiesta 1.png">
+    <img src="images/Fiesta 1.png">
 </button>
 
 <div id="main">
@@ -182,8 +182,8 @@ const fonds=[
 
 const pngList=[
 "Tour 1","Tour 2","Tour 3",
-"Fenêtre 1","Fenêtre 2","Fenêtre 3",
-"Maisonnée 1","Meurtrière 1",
+"Fenetre 1","Fenetre 2","Fenetre 3",
+"Maisonnee 1","Meurtriere 1",
 "Pont 1","Pont droite 1","Pont gauche 1",
 "Porte 1",
 "Sommet 1","Sommet 2","Sommet 3","Sommet 4",
@@ -216,11 +216,11 @@ let activeBg=bg1;
 function randomFond(){
     return fonds[Math.floor(Math.random()*fonds.length)];
 }
-activeBg.style.backgroundImage=`url("${randomFond()}.png")`;
+activeBg.style.backgroundImage=`url("images/fonds/${randomFond()}.png")`;
 
 document.getElementById("bgBtn").onclick=()=>{
     const next=(activeBg===bg1)?bg2:bg1;
-    next.style.backgroundImage=`url("${randomFond()}.png")`;
+    next.style.backgroundImage=`url("images/fonds/${randomFond()}.png")`;
     next.style.opacity=1;
     activeBg.style.opacity=0;
     activeBg=next;
@@ -313,7 +313,7 @@ canvas.addEventListener("mousedown",e=>{
 
     if(tool){
         const img=new Image();
-        img.src=tool+".png";
+        img.src=`images/outils/${tool}.png`;
         img.onload=()=>{
             objects.push({
                 img:img,
@@ -385,7 +385,7 @@ function createBtn(name){
     const b=document.createElement("div");
     b.className="btn";
     const img=document.createElement("img");
-    img.src=name+".png";
+    img.src=`images/outils/${name}.png`;
     b.appendChild(img);
     b.onclick=()=>tool=name;
     document.getElementById("toolbar").appendChild(b);
