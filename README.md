@@ -4,6 +4,8 @@ Ce dépôt est un hommage non officiel à l’application **“Construction de C
 
 Une œuvre interactive, ludique et singulière permettant de composer librement des châteaux à partir d’éléments graphiques.
 
+Le logiciel est disponible à l'adresse : https://roland-cristal.github.io/construction-de-chateau/
+
 ## 🏰 Le projet
 
 “Construction de Château” est un éditeur visuel interactif permettant de :
